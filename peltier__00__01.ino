@@ -1,0 +1,58 @@
+#include "HX711.h"
+
+#define DT  4
+#define SCK 5
+
+HX711 scale;
+
+// HX711 parameters
+#define VREF 4.3
+#define GAIN 128.0
+
+// Seebeck coefficient (adjust after calibration)
+#define S 0.0005   
+
+#define SAMPLES 10
+
+void setup() {
+  Serial.begin(115200);   // ESP32 supports higher baud rate
+  scale.begin(DT, SCK);
+
+  // Optional: set gain explicitly
+  scale.set_gain(128);
+}
+
+void loop() {
+
+  long sum = 0;
+
+  // Averaging for stable readings
+  for (int i = 0; i < SAMPLES; i++) {
+    while (!scale.is_ready());   // wait for HX711
+    sum += scale.read();
+  }
+
+  float raw = sum / (float)SAMPLES;
+
+  // Convert to voltage (V)
+  float voltage = (raw / 8388608.0) * (VREF / GAIN);
+
+  // Convert to mV
+  float voltage_mV = voltage * 1000.0;
+
+  // Convert to temperature difference
+  float deltaT = voltage / S;
+
+  Serial.print("Raw: ");
+  Serial.print(raw);
+
+  Serial.print(" | Voltage: ");
+  Serial.print(voltage_mV, 6);
+  Serial.print(" mV");
+
+  Serial.print(" | ΔT: ");
+  Serial.print(deltaT, 2);
+  Serial.println(" °C");
+
+  delay(200);   // faster update than UNO
+}
